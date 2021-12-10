@@ -21,7 +21,7 @@ import model as md
 # PRIVATE FUNCTION -----------------------------------------------------------
 def __parse_metrics_txt(y, t):
     val = int(y-t)
-    return f"{val} since yesterday"
+    return f"{val} since the day before"
 
 # PUBLIC FUNCTION ------------------------------------------------------------
 
@@ -139,11 +139,13 @@ def display_today_metric(df):
     None.
 
     """
-    today_nbr_hosp, today_nbr_rea, today_nbr_conf = load_metric(df, md.date_today)
+    day_last = max(df['date'])
+    day_penultimate = max(df[df['date']!=day_last]['date'])
+    today_nbr_hosp, today_nbr_rea, today_nbr_conf = load_metric(df, day_last)
     
-    yest_nbr_hosp, yest_nbr_rea, yest_nbr_conf = load_metric(df, md.date_yesterday)
+    yest_nbr_hosp, yest_nbr_rea, yest_nbr_conf = load_metric(df, day_penultimate)
     
-    st.markdown("#### Today metrics - {}".format(md.date_today))
+    st.markdown("#### Last metrics - {}".format(md.date_today))
     
     col1, col2, col3 = st.columns(3)
     col1.metric(label = "Number of patients hospitalized", 
