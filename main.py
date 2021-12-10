@@ -51,8 +51,8 @@ with dg_content.container():
     graph_hosp_rea = ctrl.load_chart(df, 'hosp_rea')
     st.plotly_chart(graph_hosp_rea, use_container_width=True)
     
-    
-    nbr_death_total = df[df['date']==model.date_today].iloc[0, df[df['date']==model.date_today].columns.tolist().index("dchosp")]
+    last_date = max(df['date'])
+    nbr_death_total = df[df['date']==last_date].iloc[0, df[df['date']==last_date].columns.tolist().index("dchosp")]
     st.markdown('Total number of patients who died in French hospitals : **{:.0f}**'.format(nbr_death_total))
 
     ### Dead
