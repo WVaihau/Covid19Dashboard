@@ -16,7 +16,7 @@ import streamlit as st
 import pandas as pd
 
 ## Other
-import model
+import model as md
 
 # PRIVATE FUNCTION -----------------------------------------------------------
 def __parse_metrics_txt(y, t):
@@ -139,13 +139,11 @@ def display_today_metric(df):
     None.
 
     """
-    today_nbr_hosp, today_nbr_rea, today_nbr_conf = load_metric(df, 
-                                                            model.date_today)
+    today_nbr_hosp, today_nbr_rea, today_nbr_conf = load_metric(df, md.date_today)
     
-    yest_nbr_hosp, yest_nbr_rea, yest_nbr_conf = load_metric(df,
-                                              model.date_yesterday)
+    yest_nbr_hosp, yest_nbr_rea, yest_nbr_conf = load_metric(df, md.date_yesterday)
     
-    st.markdown("#### Today metrics - {}".format(model.date_today))
+    st.markdown("#### Today metrics - {}".format(md.date_today))
     
     col1, col2, col3 = st.columns(3)
     col1.metric(label = "Number of patients hospitalized", 
