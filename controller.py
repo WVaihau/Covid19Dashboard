@@ -71,7 +71,6 @@ def load_data(source, type_entry='csv'):
         df = pd.read_csv(source)
     return df
 
-@st.cache
 def load_chart(df:pd.DataFrame, chart:str=None):
     """
         Load a graph
@@ -120,7 +119,7 @@ def load_chart(df:pd.DataFrame, chart:str=None):
                     })
     return graph
 
-@st.cache
+
 def load_metric(df:pd.DataFrame, date):
     """
     Load metric given a date
