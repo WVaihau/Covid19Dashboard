@@ -49,7 +49,7 @@ def __display_row(ref, j1, last):
 # PUBLIC FUNCTION ------------------------------------------------------------
 
 ## Load --
-@st.cache(ttl=60)
+
 def load_data(source, type_entry='csv'):
     """
     Load a dataframe from a source
