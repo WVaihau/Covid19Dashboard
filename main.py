@@ -19,42 +19,55 @@ st.set_page_config(**model.page_config)
 
 ## Main
 
+container_header = st.empty()
 
-### DATA GOUV
+container_kpi = st.empty()
 
-st.header('FROM DATA GOUV')
-
-data_gouv_KPI = st.empty()
-
-dg_content = st.empty()
+container_main = st.empty()
 
 st.markdown("[@Source : data.gouv]({})".format(model.urls["WB"]['DATAGOUV']))
 
 # Condition ------------------------------------------------------------------
 
+## Loading data
 
-## DATA GOUV
-
+### Sources
 df = ctrl.load_data(model.urls['DATA']['DATAGOUV'])
 
-with dg_content.container():
+### Record
+record_date_last = ctrl.get_last_record_date(df)
+
+
+### Graph
+graph_conf_case = ctrl.load_chart(df, 'conf_case')
+graph_hosp_rea = ctrl.load_chart(df, 'hosp_rea')
+graph_dead = ctrl.load_chart(df, 'death')
+
+with container_header.container():
+    st.markdown('# \U0001F4C8 France Covid 19 - Dashboard')
+    st.markdown('Last recorded date : {}'.format(record_date_last))
+
+with container_kpi.container():
+    st.header('# Overview')
     
-    st.subheader('#France')
+    st.subheader('General')
+    ctrl.display_general_metric(df)
     
-    ctrl.display_today_metric(df)
+    st.subheader('Progression')
+    st.markdown('\U00002139 | *The calculation is based on the last two days recorded*')
+    ctrl.display_progression(df)
+    
+
+with container_main.container():
+    
+    st.header('# Situation in hospitals')
     
     ### Confirmed Case
-    graph_conf_case = ctrl.load_chart(df, 'conf_case')
     st.plotly_chart(graph_conf_case, use_container_width=True)
     
     ### Hospitalized and in reanimation
-    graph_hosp_rea = ctrl.load_chart(df, 'hosp_rea')
     st.plotly_chart(graph_hosp_rea, use_container_width=True)
     
-    last_date = max(df['date'])
-    nbr_death_total = df[df['date']==last_date].iloc[0, df[df['date']==last_date].columns.tolist().index("dchosp")]
-    st.markdown('Total number of patients who died in French hospitals : **{:.0f}**'.format(nbr_death_total))
-
+    st.header('The status of deaths due to COVID-19')
     ### Dead
-    graph_dead = ctrl.load_chart(df, 'death')
     st.plotly_chart(graph_dead, use_container_width=True)

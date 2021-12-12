@@ -15,7 +15,7 @@ import datetime
 app_info = {
     "name"   : "COVID 19 DashBoard",
     "logo"   : ":microscope:",
-    "layout" : "centered",
+    "layout" : "wide",
     "author" : {
         "last_name" : "Williamu",
         "first_name" : "Vaihau"

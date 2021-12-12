@@ -17,11 +17,34 @@ import pandas as pd
 
 ## Other
 import model as md
+import numpy as np
 
 # PRIVATE FUNCTION -----------------------------------------------------------
 def __parse_metrics_txt(y, t):
     val = int(y-t)
-    return f"{val} since the day before"
+    return f"{val}"
+
+def __get_last_info(df):
+    record_date_last = get_last_record_date(df)
+    record_date_j1 = max(df[df['date']!=record_date_last]['date'])
+    
+    record = {
+        'last' : df[df['date'] == record_date_last],
+        'j-1' : df[df['date'] == record_date_j1]
+        }
+    return record
+
+def __display_row(ref, j1, last):
+    n = len(ref)
+    cols = st.columns(n)
+    for i, item in enumerate(ref.items()):
+        cols[i].metric(
+            label = item[1]['label'],
+            value = '',
+            delta = __parse_metrics_txt(j1[item[0]], last[item[0]]),
+            delta_color = item[1]['d']
+            )
+
 
 # PUBLIC FUNCTION ------------------------------------------------------------
 
@@ -124,7 +147,74 @@ def load_metric(df:pd.DataFrame, date):
     
     return nbr_liste
 
+## Variables --
+def get_last_record_date(df, date_col='date'):
+    return df[date_col].max()
+
 ## Display procedure --
+def display_general_metric(p_df):
+    """
+    Display general metrics
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Data source
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    # Variables
+    
+    ## unclassified
+    error_msg = '_'
+    
+    ## Last record date
+    date = get_last_record_date(p_df)
+    
+    ## Last record date information
+    df = p_df[p_df['date'] == date]
+    df.replace({np.nan:None}, inplace=True)
+    
+    ## Positivity rate of virological tests
+    tx_pos = df['tx_pos'].iloc[0]
+    
+    ## Number of people tested positive (RT-PCR and antigenic test)
+    tx_incid = df['tx_incid'].iloc[0]
+    
+    ## Occupancy rate of hospital beds
+    TO = df['TO'].iloc[0]
+    
+    ## Virus reproduction factor
+    R = df['R'].iloc[0]
+    
+    # Layout
+    if None in [tx_pos, tx_incid, TO, R]:
+        st.markdown("\U00002139 | *The stats are based on the data of the last recorded date*")    
+
+    col1, col2, col3, col4 = st.columns(4)
+    
+    col1.metric(label = "Positivity rate of virological tests",
+                value = round(tx_pos,2) if tx_pos != None else error_msg
+                )
+
+    col2.metric(label = "Incidence rate",
+                value = round(tx_incid,2) if tx_incid != None else error_msg
+                )
+
+    col3.metric(label = "Occupancy rate of hospital beds",
+                value = f'{round(TO*100,2)} %' if TO != None else error_msg
+                )
+
+    col4.metric(label = "Virus reproduction factor",
+                value = round(R,2) if R != None else error_msg
+                )    
+
+            
+
 def display_today_metric(df):
     """
     Display today metric
@@ -160,4 +250,68 @@ def display_today_metric(df):
                 value = today_nbr_conf, 
                 delta = __parse_metrics_txt(yest_nbr_conf, today_nbr_conf),
                 delta_color = "inverse")
+
+def display_progression(df):
+    
+    record = __get_last_info(df)
+    last = record['last'].drop(columns=['date']).iloc[0]
+    j1 = record['j-1'].drop(columns=['date']).iloc[0]
+    
+    data = {
+        "hosp" : {
+            'label' : 'Presently Hospitalized'
+            },
+        "incid_hosp" : {
+            'label' : 'New patients Hospitalized'
+            },
+        "rea" : {
+            "label" : "Presently in Intensive Care"
+            },
+        "incid_rea" : {
+            "label" : "New patients in Intensive Care"
+            },
+        "rad" : {
+            "label" : "Returned home"
+            },
+        "incid_rad" : {
+            "label" : "New patients returned home"
+            }
+        }
+    
+    for k in data.keys():
+        if 'rad' not in k:
+            data[k]['d'] = 'inverse'
+        else:
+            data[k]['d'] = 'normal'
+            
+    l1 = ['hosp', 'rea', 'rad']
+    
+    rep = [{k:v for k,v in data.items() if col in k} for col in l1]
+    
+    for info in rep:
+        __display_row(info, j1, last)
+        
+
+        
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
