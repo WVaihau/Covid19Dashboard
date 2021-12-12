@@ -35,7 +35,7 @@ st.markdown("[@Source : data.gouv]({})".format(model.urls["WB"]['DATAGOUV']))
 df = ctrl.load_data(model.urls['DATA']['DATAGOUV'])
 
 ### Record
-record_date_last = ctrl.get_last_record_date(df)
+record_date_last = df['date'].max()
 
 
 ### Graph
