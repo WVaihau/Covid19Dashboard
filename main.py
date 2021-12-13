@@ -6,13 +6,14 @@
 import streamlit as st
 import model
 import controller as ctrl
+import controller
 
 # Configuration --------------------------------------------------------------
 st.set_page_config(**model.page_config)
 
 ### Sources
-with st.spinner('Loading of the necessary data ...') :
-    df = ctrl.load_data(model.urls['DATA']['DATAGOUV']['general'])
+
+df = controller.load_data(model.urls['DATA']['DATAGOUV']['general'])
     # df_detailed = ctrl.load_data(model.urls['DATA']['DATAGOUV']['detailed'])
 
 # Layout ---------------------------------------------------------------------
