@@ -47,8 +47,23 @@ date_yesterday = date_yesterday.strftime("%Y-%m-%d")
 
 # Controller variables -------------------------------------------------------
 
+cache_duration = {
+    'short' : 3600,
+    'long' : 3600*24*31
+    }
 
+replacement_geojson_df = {
+    'Bourgogne-Franche-Comté' : 'Bourgogne et Franche-Comté',
+    'La Réunion' : 'Réunion',
+    'Nouvelle-Aquitaine' : 'Nouvelle Aquitaine',
+    'Auvergne-Rhône-Alpes' : 'Auvergne et Rhône-Alpes'
+}
 
+replacement_df_geojson = {v:k for k,v in replacement_geojson_df.items()}
+
+map_isolate = {
+    'lib_reg' : ['Guyane', 'Martinique', 'Guadeloupe', 'Mayotte', 'La Réunion']
+    }
 
 # VIEW variables -------------------------------------------------------------
 
@@ -57,6 +72,12 @@ urls = {
     "DATAGOUV" : "https://www.data.gouv.fr/fr/datasets/synthese-des-indicateurs-de-suivi-de-lepidemie-covid-19/"       
        },
    "DATA" : {
-    "DATAGOUV" : "https://www.data.gouv.fr/fr/datasets/r/f335f9ea-86e3-4ffa-9684-93c009d5e617"
+    "DATAGOUV" : {
+        'general' : "https://www.data.gouv.fr/fr/datasets/r/f335f9ea-86e3-4ffa-9684-93c009d5e617",
+        'detailed' : "https://www.data.gouv.fr/fr/datasets/r/5c4e1452-3850-4b59-b11c-3dd51d7fb8b5"
+        },
+    "GEOJSON" : {
+        'lib_reg' : 'https://france-geojson.gregoiredavid.fr/repo/regions.geojson'
+        }
        }
         }

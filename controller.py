@@ -9,7 +9,9 @@ Created on Thu Dec  9 18:47:27 2021
 
 ## GRAPHIQUE
 import plotly.express as px 
-import plotly 
+import plotly
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 ## View
 import streamlit as st
@@ -18,6 +20,8 @@ import pandas as pd
 ## Other
 import model as md
 import numpy as np
+import requests 
+import json
 
 # PRIVATE FUNCTION -----------------------------------------------------------
 def __parse_metrics_txt(y, t):
@@ -49,8 +53,8 @@ def __display_row(ref, j1, last):
 # PUBLIC FUNCTION ------------------------------------------------------------
 
 ## Load --
-
-def load_data(source, type_entry='csv'):
+#st.cache(suppress_st_warning=True)
+def load_data(source, type_entry='main'):
     """
     Load a dataframe from a source
 
@@ -67,8 +71,10 @@ def load_data(source, type_entry='csv'):
         pandas.DataFrame
 
     """
-    if type_entry == 'csv':
+    if type_entry == 'main':
         df = pd.read_csv(source)
+    elif type_entry == 'spec':
+        df = pd.read_csv(source, low_memory = False)
     return df
 
 def load_chart(df:pd.DataFrame, chart:str=None):
@@ -145,6 +151,57 @@ def load_metric(df:pd.DataFrame, date):
     nbr_liste = [nbr_case(cat) for cat in list_metrics]
     
     return nbr_liste
+
+## CHARTS
+def progress(df, p_by, p_by1, name_p_by, name_p_by1, p_title):
+    # Create figure with secondary y-axis
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    fig.update_layout(
+        title_text=p_title
+    )
+
+    # Add traces
+    fig.add_trace(
+        go.Bar(x=df['date'].values.tolist(), y=df[p_by].values.tolist(), name=name_p_by),
+        secondary_y=False,
+    )
+
+    fig.add_trace(
+        go.Scatter(x=df['date'].values.tolist(), y=df[p_by1].values.tolist(), name=name_p_by1, mode='lines'),
+        secondary_y=True,
+    )
+
+    # Set x-axis title
+    fig.update_xaxes(title_text="Date")
+
+    # Hovering
+    fig.update_layout(hovermode='x unified')
+    
+    # Set y-axes titles
+    fig.update_yaxes(title_text=name_p_by, secondary_y=False)
+    fig.update_yaxes(title_text=name_p_by1, secondary_y=True)
+    
+    return fig
+
+def chart_progress_stats(df, p_by, p_title):
+    fig = None
+
+    if p_by == 'R':
+        fig = px.line(df, x='date', y='R', title=p_title)
+        fig.update_traces(mode="lines")
+        fig.add_hrect(y0=1, y1=df['R'].max(),
+                      annotation_text="The epidemic is growing", annotation_position="top left",
+                      fillcolor="red", opacity=0.25, line_width=0)
+    elif p_by == 'occ':
+        fig = px.line(df, x='date', y='TO', title=p_title),
+    elif p_by == 'tx_pos':
+        fig = px.line(df, x='date', y='tx_pos', title=p_title)
+    elif p_by == 'tx_incid':
+        fig = px.line(df, x='date', y='tx_incid', title=p_title)
+    
+    return fig
+            
 
 ## Variables --
 def get_last_record_date(df, date_col='date'):
@@ -293,8 +350,62 @@ def display_progression(df):
 
         
     
+## Other
+def get_geojson(by='reg'):
+    
+    url = md.urls['DATA']['GEOJSON'][by]
+    
+    with requests.get(url) as response:
+        group = json.loads(response.text)
+    
+    return group
+    
+def transform_df(df):
+    
+    df['lib_reg'].replace(md.replacement_df_geojson, inplace=True)
+    
+    return df
 
-
+def show_map(p_df, p_by, sort=None, p_date=None, animation=False):
+    
+    # VARIABLES
+    
+    ## DataFrame
+    
+    ### Filter by the specific date if the animation is unwanted
+    if animation == False:
+        if p_date != None:
+            df = p_df[p_df['date'] == p_date]
+        else: #### If the the date is None take the last record date
+            df = p_df[p_df['date'] == p_df['date'].max()]
+        
+    ### Adapt the df label with the geojson file
+    df['lib_reg'].replace(md.replacement_df_geojson, inplace=True)
+    
+    ### Keep ONLY wanted values
+    if sort == None:
+        liste_group = df[p_by].unique()
+    else:
+        liste_group = sort
+    df = df[df[p_by].isin(liste_group)]
+    
+    ## Geojson
+    p_geojson = get_geojson(by=p_by)
+    
+    # MAP
+    map_fig = px.choropleth(
+        df,
+        color        = p_by,
+        locations    = p_by,
+        projection   ='mercator',
+        geojson      = p_geojson,
+        featureidkey ='properties.nom'
+        )
+    map_fig.update_geos(fitbounds="locations", visible=False)
+    map_fig.update_layout(margin={"r":0, "t":0, "l":0, "b":0})
+    
+    return map_fig
+    
 
 
 
