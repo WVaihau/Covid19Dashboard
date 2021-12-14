@@ -85,7 +85,7 @@ urls = {
         }
 
 nwv = {
-       "mano" : {
+       "mano_var" : {
            "img" : "https://img.shields.io/badge/Mano-0077B5?style=for-the-badge&logo=linkedin&logoColor=white&link=https://www.linkedin.com/in/manomathew/",
            "url" : "https://www.linkedin.com/in/manomathew/"
            },
@@ -95,7 +95,7 @@ nwv = {
            }       
       }
 
-mano_btn = f"[![Connect]({nwv['mano']['img']})]({nwv['mano']['url']})"
+mano_btn = f"[![Connect]({nwv['mano_var']['img']})]({nwv['mano_var']['url']})"
 vaihau_btn = f"[![Connect]({nwv['vaihau']['img']})]({nwv['vaihau']['url']})"
 
 network_btn = f"{mano_btn}&nbsp{vaihau_btn}"

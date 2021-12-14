@@ -5,7 +5,6 @@
 
 import streamlit as st
 import model
-import model as md_data
 import controller as ctrl
 import controller
 
@@ -41,9 +40,9 @@ st.markdown("[@Source : data.gouv]({})".format(model.urls["WB"]['DATAGOUV']))
 with container_network.container():
     st.markdown("## \U0001F4CC Contact us")
     st.markdown('**Mano Mathew**')
-    st.write(md_data.mano_btn)
+    st.write(model.mano_btn)
     st.markdown("**WILLIAMU Vaihau** *@Developper*")
-    st.write(md_data.vaihau_btn)
+    st.write(model.vaihau_btn)
 ## Loading variables
 
 ### Record
