@@ -16,6 +16,7 @@ app_info = {
     "name"   : "COVID 19 DashBoard",
     "logo"   : ":microscope:",
     "layout" : "wide",
+    "sidebar": "collapsed",
     "author" : {
         "last_name" : "Williamu",
         "first_name" : "Vaihau"
@@ -37,7 +38,8 @@ folder = {
 page_config = {
     "page_title" : app_info["name"] + " - " + app_info["author"]["initials"],
     "layout" : app_info["layout"],
-    "page_icon" : app_info["logo"]
+    "page_icon" : app_info["logo"],
+    "initial_sidebar_state" : app_info['sidebar']
     }
 
 date_today = datetime.date.today().strftime("%Y-%m-%d")
@@ -81,3 +83,21 @@ urls = {
         }
        }
         }
+
+nwv = {
+       "mano" : {
+           "img" : "https://img.shields.io/badge/Mano-0077B5?style=for-the-badge&logo=linkedin&logoColor=white&link=https://www.linkedin.com/in/manomathew/",
+           "url" : "https://www.linkedin.com/in/manomathew/"
+           },
+       "vaihau" : {
+           "img" : "https://img.shields.io/badge/Vaihau-0077B5?style=for-the-badge&logo=linkedin&logoColor=white&link=https://www.linkedin.com/in/vaihau-williamu/",
+           "url" : "https://www.linkedin.com/in/vaihau-williamu/"
+           }       
+      }
+
+mano_btn = f"[![Connect]({nwv['mano']['img']})]({nwv['mano']['url']})"
+vaihau_btn = f"[![Connect]({nwv['vaihau']['img']})]({nwv['vaihau']['url']})"
+
+network_btn = f"{mano_btn}&nbsp{vaihau_btn}"
+
+ 

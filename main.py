@@ -20,6 +20,7 @@ df = controller.load_data(model.urls['DATA']['DATAGOUV']['general'])
 
 ## Sidebar --
 
+container_network = st.sidebar.empty()
 
 
 ## Main
@@ -34,6 +35,14 @@ st.markdown("[@Source : data.gouv]({})".format(model.urls["WB"]['DATAGOUV']))
 
 # Condition ------------------------------------------------------------------
 
+## Sidebar --
+
+with container_network.container():
+    st.markdown("## \U0001F4CC Contact us")
+    st.markdown('**Mano Mathew**')
+    st.write(model.mano_btn)
+    st.markdown("**WILLIAMU Vaihau** *@Developper*")
+    st.write(model.vaihau_btn)
 ## Loading variables
 
 ### Record
