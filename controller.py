@@ -8,8 +8,7 @@ Created on Thu Dec  9 18:47:27 2021
 # MODULE ---------------------------------------------------------------------
 
 ## GRAPHIQUE
-import plotly.express as px 
-import plotly
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -20,7 +19,7 @@ import pandas as pd
 ## Other
 import model as md
 import numpy as np
-import requests 
+import requests
 import json
 
 # PRIVATE FUNCTION -----------------------------------------------------------
@@ -31,7 +30,7 @@ def __parse_metrics_txt(y, t):
 def __get_last_info(df):
     record_date_last = get_last_record_date(df)
     record_date_j1 = max(df[df['date']!=record_date_last]['date'])
-    
+
     record = {
         'last' : df[df['date'] == record_date_last],
         'j-1' : df[df['date'] == record_date_j1]
@@ -53,7 +52,7 @@ def __display_row(ref, j1, last):
 # PUBLIC FUNCTION ------------------------------------------------------------
 
 ## Load --
-#st.cache(suppress_st_warning=True)
+st.cache(suppress_st_warning=True, ttl=md.cache_duration['short'])
 def load_data(source, type_entry='main'):
     """
     Load a dataframe from a source
@@ -96,18 +95,18 @@ def load_chart(df:pd.DataFrame, chart:str=None):
     """
     graph = None
     if chart == "conf_case":
-        graph = px.line(df, 
-                        x='date', 
+        graph = px.line(df,
+                        x='date',
                         y='conf',
                         title = 'Number of confirmed COVID19 cases over time',
                         labels={
-                            'date':'Date', 
+                            'date':'Date',
                             'conf':'Number of confirmed cases'
                             })
     elif chart == "hosp_rea":
         df1 = df.rename(columns={"hosp" : "hospitalized", "rea":"reanimation"})
-        graph = px.line(df1, 
-                    x='date', 
+        graph = px.line(df1,
+                    x='date',
                     y=['hospitalized', "reanimation"],
                     title = "Evolution of the number of patients in hospital and in reanimation over time",
                     labels= {
@@ -115,8 +114,8 @@ def load_chart(df:pd.DataFrame, chart:str=None):
                     'value':'Number of patients'
                     })
     elif chart == 'death':
-        graph = px.line(df, 
-                    x='date', 
+        graph = px.line(df,
+                    x='date',
                     y='dchosp',
                     title = "Evolution of patient deaths in hospital",
                     labels= {
@@ -137,20 +136,122 @@ def load_metric(df:pd.DataFrame, date):
 
     Returns
     -------
-    
+
     nbr_liste
 
     """
-    
+
     df = df[df['date'] == date]
 
     nbr_case = lambda chx: df[df['date']== date].iloc[0,df.columns.tolist().index(chx)]
-    
+
     list_metrics = ['hosp', 'rea', 'conf_j1']
-    
+
     nbr_liste = [nbr_case(cat) for cat in list_metrics]
-    
+
     return nbr_liste
+
+@st.cache(allow_output_mutation=True)
+def process_geojson(df, sort_by_cat):
+    geojson_file = fetch_geojson(sort_by_cat)
+    geojson_place_name = [ feature['properties']['nom'] for feature in geojson_file["features"] ]
+
+    # Instanciate
+    df_cat_col = df[sort_by_cat].unique().tolist()
+    df_cat_col
+
+    replacement = {
+        '' : ['et', 'de', 'la', "d'"],
+        ' ': ['-']
+    }
+
+    # Split Each zone by word and replace if needed
+    loc = {}
+    for col in df_cat_col:
+        c = col
+        for replace_val,liste in replacement.items():
+            c = replace_word(c, liste, replace_val)
+        loc[col] = c.split()
+
+    # Associate df_zone with geojson zone
+    dict_replacement = {}
+    for df_zone, liste_word in loc.items():
+
+        for zone in geojson_place_name:
+            ctn = 0
+            for word in liste_word:
+
+                if word.lower() in zone.lower():
+                    ctn += 1
+
+            if (len(liste_word) >= 2 and ctn >= 2) or (len(liste_word) ==1 and ctn >= 1):
+                dict_replacement[df_zone] = zone
+
+    df[sort_by_cat] = df[sort_by_cat].map(lambda df_zone : dict_replacement[df_zone] if df_zone in dict_replacement.keys() else df_zone)
+
+    return df, geojson_file
+
+## Reusable
+
+def filter_df(p_df:pd.DataFrame, col_name:str, value, keep:bool=True, period=None):
+    """
+        Filter a dataframe based on a specific date
+
+        Parameters :
+            p_df : pandas.DataFrame
+                The original dataframe
+            col_name : str
+                The dataframe column name where the filter will be applyed
+            value : item or list
+                The value used to filter the specified column
+            keep : bool
+                If it must keep or not the selected value
+
+        Return : pandas.DataFrame
+            The filtered initial dataframe
+    """
+
+    if type(value) == list:
+        operator = 'not in' if keep == False else 'in'
+    else:
+        operator = "==" if keep == True else "!="
+
+    df = p_df.query(f"{col_name} {operator} @value")
+
+    return df
+
+def filter_df_last_n_date(df:pd.DataFrame, date_col:str, ndays=7, pattern='%Y-%m-%d'):
+    """
+    Return the df based on the last n days inside the col_name
+    """
+    if ndays == None:
+        ndays = 7
+
+    # Last date
+    last_date_str = df[date_col].max()
+
+    # Last date in date format
+    start_date_d = pd.to_datetime(last_date_str) - pd.Timedelta(days=ndays - 1)
+
+    # Last date in string format
+    start_date_str = start_date_d.strftime(pattern)
+
+    # Filter the data frame
+    df = df[df[date_col].between(start_date_str, last_date_str)]
+
+    return df
+
+def replace_word(var, list_replace, replacement_value):
+    for word in list_replace:
+        var = var.replace(word, replacement_value)
+    return var
+
+def fetch_geojson(name):
+
+    with requests.get(md.url['geojson'][name]) as bdd:
+        raw = json.loads(bdd.text)
+
+    return raw
 
 ## CHARTS
 def progress(df, p_by, p_by1, name_p_by, name_p_by1, p_title):
@@ -177,21 +278,26 @@ def progress(df, p_by, p_by1, name_p_by, name_p_by1, p_title):
 
     # Hovering
     fig.update_layout(hovermode='x unified')
-    
+
     # Set y-axes titles
     fig.update_yaxes(title_text=name_p_by, secondary_y=False)
     fig.update_yaxes(title_text=name_p_by1, secondary_y=True)
-    
+
     return fig
 
 def chart_progress_stats(df, p_by, p_title):
     fig = None
 
     if p_by == 'R':
-        fig = px.line(df, x='date', y='R', title=p_title)
-        fig.update_traces(mode="lines")
+        fig = px.line(df,
+                      x='date',
+                      y='R',
+                      title=p_title)
+        fig.update_traces(mode="lines",
+                          hovertemplate = "<b>%{x}</b> <br> R : %{y}"
+                          )
         fig.add_hrect(y0=1, y1=df['R'].max(),
-                      annotation_text="The epidemic is growing", annotation_position="top left",
+                      annotation_text="Area where the epidemic is developing", annotation_position="top left",
                       fillcolor="red", opacity=0.25, line_width=0)
     elif p_by == 'occ':
         fig = px.line(df, x='date', y='TO', title=p_title),
@@ -199,9 +305,174 @@ def chart_progress_stats(df, p_by, p_title):
         fig = px.line(df, x='date', y='tx_pos', title=p_title)
     elif p_by == 'tx_incid':
         fig = px.line(df, x='date', y='tx_incid', title=p_title)
-    
+
     return fig
-            
+
+@st.cache(ttl=md.cache_duration['short'])
+def chart_barplot(p_df, chx_cat, chx_opt):
+
+    df = p_df.copy(deep=True)
+
+    # Filter by last date
+    df = df[df['date'] == df['date'].max()]
+
+    # ORDER DESC
+    df = df.sort_values(chx_opt, ascending=False)
+
+    val_chx_cat = md.dict_txt['chx_cat'][chx_cat]
+    val_chx_opt = md.dict_txt['chx_opt'][chx_opt]
+
+    fig = px.bar(df,
+                 x=chx_cat,
+                 y=[chx_opt],
+                 color="incid_"+chx_opt,
+                 title = f"{val_chx_opt} by {val_chx_cat.upper()}",
+                 labels = {
+                     'value' : f"Patient {val_chx_opt.lower()}",
+                     chx_cat : val_chx_cat
+                 },
+                 color_continuous_scale='Bluered'
+                )
+    fig.update_layout(showlegend=False,
+                    coloraxis_colorbar = dict(
+                        title = "New Patients"
+                    )
+                     )
+    fig.update_traces(hovertemplate = "<br>".join([
+                        "<b>%{x}</b>",
+                        "",
+                        md.default_title_color_bar + " : %{y}",
+                        "New : %{customdata}"
+                    ]),
+                      customdata = df['incid_' + chx_opt].values.tolist()
+                     )
+    return fig
+
+@st.cache(suppress_st_warning=True, ttl=md.cache_duration['short'])
+def chart_map(p_df, p_chx_cat:str, p_chx_opt:str, p_title=None, p_ndays:int=7, p_date_col:str='date', p_filter_zone=None):
+    """
+        Generate a plotly choropleth map
+
+        Parameters:
+            p_df : pandas.DataFrame
+                The data frame which contains the data to be plot
+            p_chx_cat : str
+                The column in p_df that will be used as reference (can only be lib_reg or lib_dep)
+            p_chx_opt : str
+                The column in p_df that we want to see the evolution
+            p_title : str, optional
+                The title of the graph
+            p_ndays : int, optional
+                Number of days to be taken for animation (last n days), Default : 7 (1 week)
+            p_date_col: str, optional
+                The name of the column that contains the dates, Default : 'date'
+            p_filter_zone : bool, optional
+                Dictionnary which contains zone to handle
+                Default : None
+                Format :
+                {
+                    'location' : #list or single value of type string
+                    'keep' : #bool -> True :  keep these areas | False : removes these areas
+                }
+
+        Dict :
+        dict(
+            p_df = ,
+            p_chx_cat=,
+            p_chx_opt=,
+            p_ndays=,
+            p_date_col=,
+        )
+
+        Return : plotly.express.choropleth figure
+    """
+
+    # Parameters verification --
+    if p_chx_cat not in md.chx_cat_col:
+        raise ValueError("{} must be either one of them : {}".format('p_chx_cat', md.chx_cat_col))
+
+    if p_chx_opt not in md.dict_txt['chx_opt'].keys():
+        raise ValueError("p_chx_opt must be either one of them : {}".format(md.dict_txt['chx_opt'].keys()))
+
+    if p_title != None and type(p_title) != str:
+        raise ValueError("p_title must be a string")
+
+    if type(p_filter_zone) == dict:
+        zones = p_filter_zone
+        if set(md.filter_zone_key).issubset(zones) == False:
+            raise ValueError("p_filterzone keys must contains those keys : {}".format(md.filter_zone_key))
+        else:
+            # Verify keep value
+            if type(zones['keep']) != bool:
+                raise ValueError("The keep key must be a boolean")
+
+            # Verify location value
+            if (type(zones['location']) != str and type(zones['location']) == list) or (type(zones['location']) == str and type(zones['location']) != list):
+                pass
+            else:
+                raise ValueError("The location value must be either a list or a string")
+
+            screen = True
+    else:
+        raise ValueError("p_filterzone must be a dictionary")
+
+    # Variables instanciation --
+    date_col = p_date_col
+    chx_cat = p_chx_cat
+    chx_opt = p_chx_opt
+
+    val_hover_txt_name = md.dict_txt['chx_opt'][chx_opt]
+
+    # val_hover_data = {
+    #     chx_cat : False,
+    #     chx_opt : True,
+    #     date_col : False
+    # }
+
+
+    # Dataframe preparation --
+
+    ## Filter by date
+    df = filter_df_last_n_date(p_df, date_col, ndays=p_ndays)
+
+    ## Adapt the dataframe zone column with the geojson one
+    df, val_geojson = process_geojson(df, chx_cat)
+
+    ## Filter if needed
+    if screen == True:
+        df = filter_df(df, chx_cat, zones['location'], keep = zones['keep'])
+
+    ## Group if needed
+    if chx_cat == 'lib_reg':
+        df = df[[date_col, chx_cat, chx_opt]].groupby([date_col, chx_cat]).sum().reset_index()
+
+    ## Generate the graph
+    fig = px.choropleth(
+        df,
+        geojson = val_geojson,
+        color = chx_opt,
+        range_color = [0, df[chx_opt].max()],
+        color_continuous_scale = md.default_color_continuous_scale,
+        #hover_name = chx_cat,
+        #hover_data = val_hover_data,
+        locations = chx_cat,
+        animation_frame = date_col,
+        featureidkey = "properties.nom",
+        projection = md.default_projection_type
+    )
+    fig.update_geos(fitbounds="locations", visible=True)
+    fig.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0},
+        coloraxis_colorbar = dict(
+            title = md.default_title_color_bar
+        )
+        )
+    fig.update_traces(
+        hovertemplate='<b>%{text}</b> <br> <br> '+val_hover_txt_name+' : %{customdata}',
+        text = df[chx_cat],
+        customdata=df[chx_opt])
+
+    return fig
 
 ## Variables --
 def get_last_record_date(df, date_col='date'):
@@ -222,37 +493,37 @@ def display_general_metric(p_df):
     None.
 
     """
-    
+
     # Variables
-    
+
     ## unclassified
     error_msg = '_'
-    
+
     ## Last record date
     date = get_last_record_date(p_df)
-    
+
     ## Last record date information
     df = p_df[p_df['date'] == date]
     df.replace({np.nan:None}, inplace=True)
-    
+
     ## Positivity rate of virological tests
     tx_pos = df['tx_pos'].iloc[0]
-    
+
     ## Number of people tested positive (RT-PCR and antigenic test)
     tx_incid = df['tx_incid'].iloc[0]
-    
+
     ## Occupancy rate of hospital beds
     TO = df['TO'].iloc[0]
-    
+
     ## Virus reproduction factor
     R = df['R'].iloc[0]
-    
+
     # Layout
     if None in [tx_pos, tx_incid, TO, R]:
-        st.markdown("\U00002139 | *The stats are based on the data of the last recorded date*")    
+        st.markdown("\U00002139 | *The stats are based on the data of the last recorded date*")
 
     col1, col2, col3, col4 = st.columns(4)
-    
+
     col1.metric(label = "Positivity rate of virological tests",
                 value = round(tx_pos,2) if tx_pos != None else error_msg
                 )
@@ -267,9 +538,9 @@ def display_general_metric(p_df):
 
     col4.metric(label = "Virus reproduction factor",
                 value = round(R,2) if R != None else error_msg
-                )    
+                )
 
-            
+
 
 def display_today_metric(df):
     """
@@ -288,32 +559,44 @@ def display_today_metric(df):
     day_last = max(df['date'])
     day_penultimate = max(df[df['date']!=day_last]['date'])
     today_nbr_hosp, today_nbr_rea, today_nbr_conf = load_metric(df, day_last)
-    
+
     yest_nbr_hosp, yest_nbr_rea, yest_nbr_conf = load_metric(df, day_penultimate)
-    
+
     st.markdown("#### Last metrics - {}".format(md.date_today))
-    
+
     col1, col2, col3 = st.columns(3)
-    col1.metric(label = "Number of patients hospitalized", 
-                value = today_nbr_hosp, 
+    col1.metric(label = "Number of patients hospitalized",
+                value = today_nbr_hosp,
                 delta = __parse_metrics_txt(yest_nbr_hosp, today_nbr_hosp),
                 delta_color="inverse")
-    col2.metric(label = "Number of patients in reanimation", 
-                value = today_nbr_rea, 
+    col2.metric(label = "Number of patients in reanimation",
+                value = today_nbr_rea,
                 delta = __parse_metrics_txt(yest_nbr_rea, today_nbr_rea),
                 delta_color = "inverse")
-    col3.metric(label = "Number of patients tested positive", 
-                value = today_nbr_conf, 
+    col3.metric(label = "Number of patients tested positive",
+                value = today_nbr_conf,
                 delta = __parse_metrics_txt(yest_nbr_conf, today_nbr_conf),
                 delta_color = "inverse")
 
 def display_progression(df):
-    
+
     record = __get_last_info(df)
     last = record['last'].drop(columns=['date']).iloc[0]
     j1 = record['j-1'].drop(columns=['date']).iloc[0]
-    
+
     data = {
+        "conf" : {
+            'label' : "Confirmed case"
+            },
+        "conf_j1" : {
+            'label' : "New Confirmed case"
+            },
+        "dchosp" : {
+            'label' : "Deceased person"
+            },
+        "incid_dchosp" : {
+            'label' : "Recently deceased person"
+            },
         "hosp" : {
             'label' : 'Presently Hospitalized'
             },
@@ -333,95 +616,17 @@ def display_progression(df):
             "label" : "New patients returned home"
             }
         }
-    
+
     for k in data.keys():
         if 'rad' not in k:
             data[k]['d'] = 'inverse'
         else:
             data[k]['d'] = 'normal'
-            
-    l1 = ['hosp', 'rea', 'rad']
-    
-    rep = [{k:v for k,v in data.items() if col in k} for col in l1]
-    
+
+    l0 = ['conf', 'hosp']
+    l1 = ['rea', 'dchosp','rad']
+
+    rep = [{k:v for k,v in data.items() if col in k and 'dc' not in k} for col in l0] + [{k:v for k,v in data.items() if col in k} for col in l1]
+
     for info in rep:
         __display_row(info, j1, last)
-        
-
-        
-    
-## Other
-def get_geojson(by='reg'):
-    
-    url = md.urls['DATA']['GEOJSON'][by]
-    
-    with requests.get(url) as response:
-        group = json.loads(response.text)
-    
-    return group
-    
-def transform_df(df):
-    
-    df['lib_reg'].replace(md.replacement_df_geojson, inplace=True)
-    
-    return df
-
-def show_map(p_df, p_by, sort=None, p_date=None, animation=False):
-    
-    # VARIABLES
-    
-    ## DataFrame
-    
-    ### Filter by the specific date if the animation is unwanted
-    if animation == False:
-        if p_date != None:
-            df = p_df[p_df['date'] == p_date]
-        else: #### If the the date is None take the last record date
-            df = p_df[p_df['date'] == p_df['date'].max()]
-        
-    ### Adapt the df label with the geojson file
-    df['lib_reg'].replace(md.replacement_df_geojson, inplace=True)
-    
-    ### Keep ONLY wanted values
-    if sort == None:
-        liste_group = df[p_by].unique()
-    else:
-        liste_group = sort
-    df = df[df[p_by].isin(liste_group)]
-    
-    ## Geojson
-    p_geojson = get_geojson(by=p_by)
-    
-    # MAP
-    map_fig = px.choropleth(
-        df,
-        color        = p_by,
-        locations    = p_by,
-        projection   ='mercator',
-        geojson      = p_geojson,
-        featureidkey ='properties.nom'
-        )
-    map_fig.update_geos(fitbounds="locations", visible=False)
-    map_fig.update_layout(margin={"r":0, "t":0, "l":0, "b":0})
-    
-    return map_fig
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
