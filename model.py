@@ -94,7 +94,11 @@ zone_isolated = ['Guyane', 'Martinique', 'Mayotte', 'Guadeloupe', 'La Réunion']
 dict_txt = {
     'chx_opt' : {
         'hosp' : 'Hospitalized',
-        'rea' : 'In Intensive care'
+        'rea' : 'In Intensive care',
+        'tx_pos' : "Positivity rate of virological tests",
+        'tx_incid' : "Incidence rate",
+        "TO" : "Occupancy rate of hospital beds",
+        "R" : "Virus reproduction factor"
     },
     'chx_cat' : {
         'lib_reg' : 'Region',

@@ -479,7 +479,7 @@ def get_last_record_date(df, date_col='date'):
     return df[date_col].max()
 
 ## Display procedure --
-def display_general_metric(p_df):
+def display_general_metric(p_df, last_available=False):
     """
     Display general metrics
 
@@ -499,47 +499,99 @@ def display_general_metric(p_df):
     ## unclassified
     error_msg = '_'
 
-    ## Last record date
-    date = get_last_record_date(p_df)
+    if last_available == False:
+        ## Last record date
+        date = get_last_record_date(p_df)
 
-    ## Last record date information
-    df = p_df[p_df['date'] == date]
-    df.replace({np.nan:None}, inplace=True)
+        ## Last record date information
+        df = p_df[p_df['date'] == date]
+        df.replace({np.nan:None}, inplace=True)
 
-    ## Positivity rate of virological tests
-    tx_pos = df['tx_pos'].iloc[0]
+        ## Positivity rate of virological tests
+        tx_pos = df['tx_pos'].iloc[0]
 
-    ## Number of people tested positive (RT-PCR and antigenic test)
-    tx_incid = df['tx_incid'].iloc[0]
+        ## Number of people tested positive (RT-PCR and antigenic test)
+        tx_incid = df['tx_incid'].iloc[0]
 
-    ## Occupancy rate of hospital beds
-    TO = df['TO'].iloc[0]
+        ## Occupancy rate of hospital beds
+        TO = df['TO'].iloc[0]
 
-    ## Virus reproduction factor
-    R = df['R'].iloc[0]
+        ## Virus reproduction factor
+        R = df['R'].iloc[0]
 
-    # Layout
-    if None in [tx_pos, tx_incid, TO, R]:
-        st.markdown("\U00002139 | *The stats are based on the data of the last recorded date*")
+        # Layout
+        if None in [tx_pos, tx_incid, TO, R]:
+            st.markdown("\U00002139 | *The stats are based on the data of the last recorded date*")
 
-    col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric(label = "Positivity rate of virological tests",
-                value = round(tx_pos,2) if tx_pos != None else error_msg
-                )
+        col1.metric(label = "Positivity rate of virological tests",
+                    value = round(tx_pos,2) if tx_pos != None else error_msg
+                    )
 
-    col2.metric(label = "Incidence rate",
-                value = round(tx_incid,2) if tx_incid != None else error_msg
-                )
+        col2.metric(label = "Incidence rate",
+                    value = round(tx_incid,2) if tx_incid != None else error_msg
+                    )
 
-    col3.metric(label = "Occupancy rate of hospital beds",
-                value = f'{round(TO*100,2)} %' if TO != None else error_msg
-                )
+        col3.metric(label = "Occupancy rate of hospital beds",
+                    value = f'{round(TO*100,2)} %' if TO != None else error_msg
+                    )
 
-    col4.metric(label = "Virus reproduction factor",
-                value = round(R,2) if R != None else error_msg
-                )
+        col4.metric(label = "Virus reproduction factor",
+                    value = round(R,2) if R != None else error_msg
+                    )
+    else:
+        df = p_df.copy(deep=True)
 
+        fields = ['tx_pos', 'tx_incid', 'TO', 'R']
+
+        dict_data = {}
+        for field in fields:
+            sdf = df[df[field].notna() == True]
+
+            data = sdf.iloc[-1, :]
+
+            dict_data[field] = {
+                "val" : data[field],
+                "date": data['date']
+                }
+
+
+        cols = st.columns(len(dict_data.keys()))
+        i = 0
+        for i, col in enumerate(dict_data.keys()):
+            cols[i].plotly_chart(chart_kpi_simple(cat=col, **dict_data[col]), use_container_width=True)
+
+
+
+def chart_kpi_simple(val, date, cat):
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Indicator(
+        number = {
+            "font" : {
+                "size" : 60
+                }
+            },
+        mode = 'number',
+        value = val,
+        title = {
+            "text" : "<br>".join([
+                "<span style='font-size:0.9em; color:#EFD09E'><b>{}</b></span>".format(md.dict_txt['chx_opt'][cat]),
+                "<span style='font-size:0.8em; color:#D4AA7D'>{}</span>".format(date)
+            ])
+        },
+        gauge = {
+            'axis': {'visible': False}},
+        domain = {'row': 0, 'column': 0}
+        ))
+    fig.update_layout(
+    paper_bgcolor="#726bfa",
+    height=250,  # Added parameter
+    autosize=False
+    )
+    return fig
 
 
 def display_today_metric(df):

@@ -30,9 +30,9 @@ container_header = st.empty()
 
 container_kpi = st.empty()
 
-container_exploration = st.empty()
-
 container_main = st.empty()
+
+container_exploration = st.empty()
 
 st.markdown("[@Source : data.gouv]({})".format(model.urls["WB"]['DATAGOUV']))
 
@@ -68,7 +68,7 @@ with container_kpi.container():
     st.header('# Overview')
 
     st.subheader('General')
-    ctrl.display_general_metric(df)
+    ctrl.display_general_metric(df, last_available=True)
 
     st.subheader('Progression')
     st.markdown('\U00002139 | *The calculation is based on the last two days recorded*')
@@ -126,56 +126,56 @@ with container_exploration.container():
     max_date = ctrl.pd.to_datetime(df_detailed['date'].max())
     min_date = ctrl.pd.to_datetime(df_detailed['date'].min())
 
-    with st.expander("Exploration"):
-        ddf = df_detailed.copy(deep=True)
+    st.header('# Exploration')
+    ddf = df_detailed.copy(deep=True)
 
-        # Explore either by Region or Department
-        chx_cat = 'lib_reg' #TODO by Department not yet implemented
+    # Explore either by Region or Department
+    chx_cat = 'lib_reg' #TODO by Department not yet implemented
 
-        #TODO Choose a variable to explore (For now only one case at a time)
-        u_chx_opt = st.selectbox("Attribute to explore",
-                                      model.dict_txt['chx_opt'].values())
-        chx_opt = list(model.dict_txt['chx_opt'].keys())[list(model.dict_txt['chx_opt'].values()).index(u_chx_opt)]
-        # Choose a mode
-        chx_time = st.selectbox("Explore by", ['Last days',
-                                               'Last 7 days',
-                                           'Last 2 weeks'
-                                           ])
+    #TODO Choose a variable to explore (For now only one case at a time)
+    u_chx_opt = st.selectbox("Attribute to explore",
+                                  model.dict_txt['chx_opt'].values())
+    chx_opt = list(model.dict_txt['chx_opt'].keys())[list(model.dict_txt['chx_opt'].values()).index(u_chx_opt)]
+    # Choose a mode
+    chx_time = st.selectbox("Explore by", ['Last days',
+                                           'Last 7 days',
+                                       'Last 2 weeks'
+                                       ])
 
-        # Group by if needed
-        if chx_cat == 'lib_reg':
-            ddf = ddf[[model.date_col, chx_cat, chx_opt, 'incid_' + chx_opt]].groupby([model.date_col, chx_cat]).sum().reset_index()
+    # Group by if needed
+    if chx_cat == 'lib_reg':
+        ddf = ddf[[model.date_col, chx_cat, chx_opt, 'incid_' + chx_opt]].groupby([model.date_col, chx_cat]).sum().reset_index()
 
-        # TODO - Continue Implementing Picked Date
-        if chx_time == 'Picked date':
-            # Date to filter on
-            dp = st.date_input(
-                "Which date ?",
-                value = max_date,
-                min_value = min_date,
-                max_value = max_date,
-                help="It take by default the last date available")
-            picked_date = dp.strftime("%Y-%m-%d")
+    # TODO - Continue Implementing Picked Date
+    if chx_time == 'Picked date':
+        # Date to filter on
+        dp = st.date_input(
+            "Which date ?",
+            value = max_date,
+            min_value = min_date,
+            max_value = max_date,
+            help="It take by default the last date available")
+        picked_date = dp.strftime("%Y-%m-%d")
 
-            # Filter by date
-            ddf = ctrl.filter_df(df_detailed,
-                                 'date',
-                                 [picked_date],
-                                 keep=True)
-        elif chx_time == 'Last days':
-            graph_bar = ctrl.chart_barplot(ddf, chx_cat, chx_opt)
-            st.plotly_chart(graph_bar, use_container_width=True)
-        elif chx_time == 'Last 7 days' or chx_time == 'Last 2 weeks':
-            ndays = 7 if chx_time == 'Last 7 days' else 12
-            graph_map = ctrl.chart_map(ddf,
-                                       chx_cat,
-                                       chx_opt,
-                                       p_ndays=ndays,
-                                       p_filter_zone={
-                                           'keep' : False,
-                                           'location' : model.zone_isolated
-                                           })
-            st.plotly_chart(graph_map, use_container_width=True)
+        # Filter by date
+        ddf = ctrl.filter_df(df_detailed,
+                             'date',
+                             [picked_date],
+                             keep=True)
+    elif chx_time == 'Last days':
+        graph_bar = ctrl.chart_barplot(ddf, chx_cat, chx_opt)
+        st.plotly_chart(graph_bar, use_container_width=True)
+    elif chx_time == 'Last 7 days' or chx_time == 'Last 2 weeks':
+        ndays = 7 if chx_time == 'Last 7 days' else 12
+        graph_map = ctrl.chart_map(ddf,
+                                   chx_cat,
+                                   chx_opt,
+                                   p_ndays=ndays,
+                                   p_filter_zone={
+                                       'keep' : False,
+                                       'location' : model.zone_isolated
+                                       })
+        st.plotly_chart(graph_map, use_container_width=True)
 
 
 
