@@ -16,6 +16,7 @@ with st.spinner("Data recovery in progress ..."):
     df = controller.load_data(model.urls['DATA']['DATAGOUV']['general'])
     df_detailed = ctrl.load_data(model.urls['DATA']['DATAGOUV']['detailed'],
                                  type_entry = 'spec')
+    df_hosp_detail = ctrl.load_data(model.url['dataset']['hosp_detail'], type_entry = "hosp")
 
 # Layout ---------------------------------------------------------------------
 
@@ -33,6 +34,8 @@ container_kpi = st.empty()
 container_main = st.empty()
 
 container_exploration = st.empty()
+
+container_region = st.empty()
 
 st.markdown("[@Source : data.gouv]({})".format(model.urls["WB"]['DATAGOUV']))
 
@@ -121,6 +124,7 @@ with container_kpi.container():
 
     st.plotly_chart(graph_healed, use_container_width=True)
 
+
 with container_exploration.container():
 
     max_date = ctrl.pd.to_datetime(df_detailed['date'].max())
@@ -134,7 +138,9 @@ with container_exploration.container():
 
     #TODO Choose a variable to explore (For now only one case at a time)
     u_chx_opt = st.selectbox("Attribute to explore",
-                                  model.dict_txt['chx_opt'].values())
+                             [v for k,v in model.dict_txt["chx_opt"].items()
+                              if k in ["hosp", "rea"]
+                              ])
     chx_opt = list(model.dict_txt['chx_opt'].keys())[list(model.dict_txt['chx_opt'].values()).index(u_chx_opt)]
     # Choose a mode
     chx_time = st.selectbox("Explore by", ['Last days',
@@ -165,6 +171,12 @@ with container_exploration.container():
     elif chx_time == 'Last days':
         graph_bar = ctrl.chart_barplot(ddf, chx_cat, chx_opt)
         st.plotly_chart(graph_bar, use_container_width=True)
+
+        reg = st.selectbox("Pick a region", df_detailed.lib_reg.unique().tolist())
+
+        graph = ctrl.graph_Region_dep_sex(df_detailed, df_hosp_detail, reg,  chx_opt)
+
+        st.plotly_chart(graph, use_container_width=True)
     elif chx_time == 'Last 7 days' or chx_time == 'Last 2 weeks':
         ndays = 7 if chx_time == 'Last 7 days' else 12
         graph_map = ctrl.chart_map(ddf,
@@ -176,15 +188,6 @@ with container_exploration.container():
                                        'location' : model.zone_isolated
                                        })
         st.plotly_chart(graph_map, use_container_width=True)
-
-
-
-
-
-
-
-
-
 
 with container_main.container():
 

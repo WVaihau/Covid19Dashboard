@@ -8,6 +8,17 @@ Created on Thu Dec  9 18:47:41 2021
 import os
 import datetime
 
+# NEW VERSION --
+
+view = [
+        "Overview",
+        "Exploration"
+        ]
+
+date_format = {
+    "title_date" : "%A, %B %d, %Y"
+    }
+
 # General variables ----------------------------------------------------------
 
 # Path to the project folder
@@ -70,7 +81,8 @@ map_isolate = {
 url = {
     "dataset" : {
         "general" : "https://www.data.gouv.fr/fr/datasets/r/f335f9ea-86e3-4ffa-9684-93c009d5e617",
-        "partition" : "https://www.data.gouv.fr/fr/datasets/r/5c4e1452-3850-4b59-b11c-3dd51d7fb8b5"
+        "partition" : "https://www.data.gouv.fr/fr/datasets/r/5c4e1452-3850-4b59-b11c-3dd51d7fb8b5",
+        "hosp_detail" : "https://www.data.gouv.fr/fr/datasets/r/63352e38-d353-4b54-bfd1-f1b3ee1cabd7"
     },
     "geojson" : {
         "lib_reg" : "https://france-geojson.gregoiredavid.fr/repo/regions.geojson",

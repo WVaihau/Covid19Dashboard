@@ -48,11 +48,13 @@ def __display_row(ref, j1, last):
             delta_color = item[1]['d']
             )
 
+def parse_date(date, format_date):
+    return pd.to_datetime(date).strftime(format_date)
 
 # PUBLIC FUNCTION ------------------------------------------------------------
 
 ## Load --
-st.cache(suppress_st_warning=True, ttl=md.cache_duration['short'])
+@st.cache(suppress_st_warning=True, ttl=md.cache_duration['short'])
 def load_data(source, type_entry='main'):
     """
     Load a dataframe from a source
@@ -74,6 +76,8 @@ def load_data(source, type_entry='main'):
         df = pd.read_csv(source)
     elif type_entry == 'spec':
         df = pd.read_csv(source, low_memory = False)
+    elif type_entry == 'hosp':
+        df = pd.read_csv(source, low_memory = False, delimiter = ";")
     return df
 
 def load_chart(df:pd.DataFrame, chart:str=None):
@@ -326,7 +330,7 @@ def chart_barplot(p_df, chx_cat, chx_opt):
                  x=chx_cat,
                  y=[chx_opt],
                  color="incid_"+chx_opt,
-                 title = f"{val_chx_opt} by {val_chx_cat.upper()}",
+                 title = f"Patients {val_chx_opt.lower()} by {val_chx_cat.upper()}",
                  labels = {
                      'value' : f"Patient {val_chx_opt.lower()}",
                      chx_cat : val_chx_cat
@@ -474,6 +478,72 @@ def chart_map(p_df, p_chx_cat:str, p_chx_opt:str, p_title=None, p_ndays:int=7, p
 
     return fig
 
+def graph_Region_dep_sex(p_df_reg, p_df_hosp_detail, p_region, p_col, p_date=None, all_sexe = False):
+
+    # Copy of the dataframes
+    df_reg = p_df_reg.copy(deep=True)
+    df_hosp_detail = p_df_hosp_detail.copy(deep=True)
+
+    region =  p_region # Wanted region
+
+    # Liste des départements pour la région sélectionnée
+    region_department = df_reg[df_reg['lib_reg'] == region]['dep'].unique().tolist()
+    # Filtre les données départemental pour les département sélectionnée
+    df_hosp_detail.query("dep in [" + "'" + "','".join(region_department) + "']", inplace=True)
+
+    # Change le code du département par son libelé
+    dep_code = {df_reg[df_reg['lib_dep'] == dep]['dep'].iloc[0]:dep for dep in df_reg['lib_dep'].unique()}
+    dep_code['978'] = 'SAINT-MARTIN'
+    df_hosp_detail['dep'] = df_hosp_detail['dep'].map(dep_code)
+
+    # Change le code du sexe par son libelé
+    sexe_code_to_lib = {
+        0 : "men and women",
+        1 : "men",
+        2 : "women"
+    }
+    df_hosp_detail['sexe'] = df_hosp_detail['sexe'].map(sexe_code_to_lib)
+
+    # Filter by the wanted date
+    if p_date == None: # By default take the last available date
+        date_picked = df_hosp_detail['jour'].max()
+    else:
+        date_picked = p_date
+    df_dep = df_hosp_detail[df_hosp_detail['jour'] == date_picked]
+
+    # Take only the ones with men or women
+    df = df_dep.query("sexe in ({})".format("'{}'".format("','".join(["men", "women"])))).groupby(['dep', 'sexe']).sum().reset_index()
+
+    # Figure creation
+    x_col = "dep" # x-axis
+    y_col = p_col # y-axis
+
+    color = ['indianred', 'lightsalmon']
+    groupby_vals = ['men', 'women']
+    groupby_col = "sexe"
+
+    fig = go.Figure()
+    for i, groupby_val in enumerate(groupby_vals):
+        fig.add_trace(go.Bar(
+            x=df[df[groupby_col] == groupby_val][x_col],
+            y=df[df[groupby_col] == groupby_val][y_col],
+            name=groupby_val[0].upper() + groupby_val[1:],
+            marker_color=color[i]
+        ))
+        fig.update_traces(
+        hovertemplate="<b>%{y}</b>")
+
+    # Here we modify the tickangle of the xaxis, resulting in rotated labels.
+    fig.update_layout(
+        title_text="<br>".join([
+            '<b> {} patients {} by department and sex </b>'.format(region, md.dict_txt['chx_opt'][y_col].lower()),
+            " <span style='font-size:0.9em; color:#808080'>{}</span>".format(date_picked)
+        ]),
+        barmode='group',
+        xaxis={'categoryorder':'total descending'})
+
+    return fig
+
 ## Variables --
 def get_last_record_date(df, date_col='date'):
     return df[date_col].max()
@@ -538,7 +608,7 @@ def display_general_metric(p_df, last_available=False):
                     )
 
         col4.metric(label = "Virus reproduction factor",
-                    value = round(R,2) if R != None else error_msg
+                    value = "{} R".format(round(R,2)) if R != None else error_msg
                     )
     else:
         df = p_df.copy(deep=True)
@@ -552,34 +622,46 @@ def display_general_metric(p_df, last_available=False):
             data = sdf.iloc[-1, :]
 
             dict_data[field] = {
-                "val" : data[field],
-                "date": data['date']
+                "val" : data[field] if field != "TO" else data[field] * 100,
+                "date": data['date'],
+                "name" : field
                 }
 
+        # Positivity rate of virological tests
 
         cols = st.columns(len(dict_data.keys()))
+        dim = ["%", "", "%", "R"]
         i = 0
         for i, col in enumerate(dict_data.keys()):
-            cols[i].plotly_chart(chart_kpi_simple(cat=col, **dict_data[col]), use_container_width=True)
+            cols[i].plotly_chart(chart_kpi_simple(cat=col, **dict_data[col], s=dim[i]), use_container_width=True)
+
+        with cols[1].expander("More about the indicator"):
+            st.caption("Unit :")
+            st.caption("Number of persons testing positive (RT-PCR and antigenic test) for the first time in more than 60 days divided by the population size")
+            st.caption("Description : ")
+            st.caption("The incidence rate is stopped at D-3 and calculated on the sum of the number of new positive persons for the last 7 days [D-9; D-3] in order to better take into account the delay of data reporting. It is expressed per 100,000 inhabitants.")
+            st.caption("Range : ")
+            st.caption("National level (France as a whole), at the regional level and at the departmental level (metropolitan and ultra-marine departments)")
 
 
-
-def chart_kpi_simple(val, date, cat):
+def chart_kpi_simple(val, date, cat, s="", name=""):
 
     fig = go.Figure()
 
     fig.add_trace(go.Indicator(
         number = {
             "font" : {
-                "size" : 60
-                }
+                "size" : 55
+                },
+            "suffix" : s
             },
         mode = 'number',
+
         value = val,
         title = {
             "text" : "<br>".join([
-                "<span style='font-size:0.9em; color:#EFD09E'><b>{}</b></span>".format(md.dict_txt['chx_opt'][cat]),
-                "<span style='font-size:0.8em; color:#D4AA7D'>{}</span>".format(date)
+                "<span style='color:#EFD09E'><b>{}</b></span>".format(md.dict_txt['chx_opt'][cat]),
+                "<span style='color:#D4AA7D'>{}</span>".format(date)
             ])
         },
         gauge = {
@@ -589,7 +671,7 @@ def chart_kpi_simple(val, date, cat):
     fig.update_layout(
     paper_bgcolor="#726bfa",
     height=250,  # Added parameter
-    autosize=False
+    autosize=True
     )
     return fig
 
