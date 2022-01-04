@@ -7,6 +7,11 @@ import streamlit as st
 import model
 import controller as ctrl
 import controller
+#import streamlit_analytics
+
+#streamlit_analytics.track(unsafe_password="12388")
+
+#streamlit_analytics.start_tracking()
 
 # Configuration --------------------------------------------------------------
 st.set_page_config(**model.page_config)
@@ -14,9 +19,10 @@ st.set_page_config(**model.page_config)
 ### Sources
 with st.spinner("Data recovery in progress ..."):
     df = controller.load_data(model.urls['DATA']['DATAGOUV']['general'])
-    df_detailed = ctrl.load_data(model.urls['DATA']['DATAGOUV']['detailed'],
+    df_detailed = ctrl.load_data(model.url["dataset"]['partition'],
                                  type_entry = 'spec')
     df_hosp_detail = ctrl.load_data(model.url['dataset']['hosp_detail'], type_entry = "hosp")
+    df_age = ctrl.load_data(model.url["dataset"]["age"], type_entry="hosp")
 
 # Layout ---------------------------------------------------------------------
 
@@ -174,9 +180,14 @@ with container_exploration.container():
 
         reg = st.selectbox("Pick a region", df_detailed.lib_reg.unique().tolist())
 
+        # Hospitalization in Picked Region by department and sex
         graph = ctrl.graph_Region_dep_sex(df_detailed, df_hosp_detail, reg,  chx_opt)
-
         st.plotly_chart(graph, use_container_width=True)
+
+        # New Hospitalization in Picked Region by age group
+        graph_age = ctrl.chart_age_per_region(reg, df_detailed, df_age)
+        st.plotly_chart(graph_age, use_container_width=True)
+
     elif chx_time == 'Last 7 days' or chx_time == 'Last 2 weeks':
         ndays = 7 if chx_time == 'Last 7 days' else 12
         graph_map = ctrl.chart_map(ddf,
@@ -203,21 +214,22 @@ with container_main.container():
 
     st.plotly_chart(graph_R, use_container_width=True)
 
-    st.markdown("""
-                Evolution of the R0: the number of reproduction of the virus
-                It is the average number of people that an infected person can contaminate. If the effective **R is greater than 1, the epidemic is growing; if it is less than 1, the epidemic is declining**
-                """)
+    # st.markdown("""
+    #             Evolution of the R0: the number of reproduction of the virus
+    #             It is the average number of people that an infected person can contaminate. If the effective **R is greater than 1, the epidemic is growing; if it is less than 1, the epidemic is declining**
+    #             """)
 
     col11, col22 = st.columns(2)
 
     col11.plotly_chart(graph_tx_pos, use_container_width=True)
-    col11.markdown("""
-                  The positivity rate corresponds to the number of people tested positive (RT-PCR and antigenic test)
-                  The above graph refers to the rate of virological test positivity for the first time in more than 60 days as a proportion of the total number of people who tested positive or negative in a given period; and who never tested positive in the previous 60 days).
-                  """)
+    # col11.markdown("""
+    #               The positivity rate corresponds to the number of people tested positive (RT-PCR and antigenic test)
+    #               The above graph refers to the rate of virological test positivity for the first time in more than 60 days as a proportion of the total number of people who tested positive or negative in a given period; and who never tested positive in the previous 60 days).
+    #               """)
     col22.plotly_chart(graph_tx_incid, use_container_width=True)
-    col22.markdown("""
-                   The incidence rate is the number of people who tested positive (RT-PCR and antigenic test)
-                   In the graph above, it is the Incidence Rate for the first time in more than 60 days related to the population size. It is expressed per 100,000 population)
-                   """)
+    # col22.markdown("""
+    #                The incidence rate is the number of people who tested positive (RT-PCR and antigenic test)
+    #                In the graph above, it is the Incidence Rate for the first time in more than 60 days related to the population size. It is expressed per 100,000 population)
+    #                """)
 
+#streamlit_analytics.stop_tracking(unsafe_password="123")

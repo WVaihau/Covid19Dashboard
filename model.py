@@ -82,7 +82,8 @@ url = {
     "dataset" : {
         "general" : "https://www.data.gouv.fr/fr/datasets/r/f335f9ea-86e3-4ffa-9684-93c009d5e617",
         "partition" : "https://www.data.gouv.fr/fr/datasets/r/5c4e1452-3850-4b59-b11c-3dd51d7fb8b5",
-        "hosp_detail" : "https://www.data.gouv.fr/fr/datasets/r/63352e38-d353-4b54-bfd1-f1b3ee1cabd7"
+        "hosp_detail" : "https://www.data.gouv.fr/fr/datasets/r/63352e38-d353-4b54-bfd1-f1b3ee1cabd7",
+        "age" : "https://www.data.gouv.fr/fr/datasets/r/dc7663c7-5da9-4765-a98b-ba4bc9de9079"
     },
     "geojson" : {
         "lib_reg" : "https://france-geojson.gregoiredavid.fr/repo/regions.geojson",
@@ -91,6 +92,19 @@ url = {
 }
 
 date_col = 'date'
+
+age_trad = {
+0 : "all ages",
+9 : "0-9",
+19 : "10-19",
+29 : "20-29",
+39 : "30-39",
+49 : "40-49",
+59 : "50-59",
+69 : "60-69",
+79 : "70-79",
+89 : "80-89",
+90 : "90 and +"}
 
 ## Map variables
 chx_cat_col = ['lib_reg', 'lib_dep']

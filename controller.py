@@ -21,6 +21,11 @@ import model as md
 import numpy as np
 import requests
 import json
+import calendar
+import datetime
+from datetime import timedelta
+import re
+import numpy as np
 
 # PRIVATE FUNCTION -----------------------------------------------------------
 def __parse_metrics_txt(y, t):
@@ -50,6 +55,23 @@ def __display_row(ref, j1, last):
 
 def parse_date(date, format_date):
     return pd.to_datetime(date).strftime(format_date)
+
+def __get_start_and_end_date_from_calendar_week(year, calendar_week):
+    monday = datetime.datetime.strptime(f'{year}-{calendar_week}-1', "%Y-%W-%w").date()
+    return monday, monday + datetime.timedelta(days=6.9)
+
+def __get_last_date_from_week_number(p_yw):
+
+    # Parse the year and week number
+    year, week_nbr = [int(nbr) for nbr in re.findall("\d+", p_yw)]
+
+    # Get the last date of this specific week
+    _, date_last = __get_start_and_end_date_from_calendar_week(year, week_nbr)
+
+    # Format the date
+    date = date_last
+
+    return date
 
 # PUBLIC FUNCTION ------------------------------------------------------------
 
@@ -544,9 +566,65 @@ def graph_Region_dep_sex(p_df_reg, p_df_hosp_detail, p_region, p_col, p_date=Non
 
     return fig
 
+def chart_age_per_region(p_region, p_df_reg, p_df_age, graph_type="line"):
+    # Make a copy of each input dataframe
+    df_reg = p_df_reg.copy(deep=True)
+    df_age = p_df_age.copy(deep=True)
+
+    # Replace each code by its respective label
+    reg_nbr = {df_reg[df_reg['lib_reg'] == reg].iloc[0,:]["reg"]:reg for reg in df_reg['lib_reg'].unique()}
+    df_age['reg'] = df_age['reg'].map(reg_nbr)
+
+    # Keep only records about the wanted region
+    df_age = df_age[df_age["reg"] == p_region]
+
+    # Change the age column with its respective value
+    df_age["cl_age90"] = df_age["cl_age90"].map(md.age_trad)
+
+    # Change the Week column to take the last date available for the given week number
+    df_age["Semaine"] = df_age["Semaine"].map(lambda x: __get_last_date_from_week_number(x))
+
+    # Rename the dataframe column
+    df_age.rename(columns={"cl_age90":"cl_age", "Semaine":"Date"}, inplace=True)
+
+    if graph_type == "line":
+        fig = px.line(
+            df_age[df_age["cl_age"] != "all ages"],
+            x="Date",
+            y="NewAdmHospit",
+            color="cl_age",
+            labels = {"NewAdmHospit" : "Number of Patients"},
+            title = "<br>".join([
+                "<b>New hospitalization in {} by age group</b>".format(p_region),
+                "{}".format(df_age["Date"].max())
+                ]),
+            custom_data=["cl_age"]
+            #log_y=True
+            )
+
+        fig.update_traces(
+            hovertemplate="<br>".join([
+                "<b>%{customdata[0]} years old </b>",
+                "Date : %{x}",
+                "Number of new hospitalizations : %{y}"
+                ]))
+        fig.update_layout(legend_title_text='Age Group <br><span style="color:grey; font-size:0.7em">unit : years old</span>')
+    else:
+        df_pivot = pd.pivot(
+            df_age.groupby(["Date", "cl_age"]).max().reset_index(),
+            values="NewAdmHospit",
+            index=['cl_age'],
+            columns = ["Date"]
+        )
+        fig = px.imshow(
+            df_pivot
+            )
+    return fig
+
 ## Variables --
 def get_last_record_date(df, date_col='date'):
     return df[date_col].max()
+
 
 ## Display procedure --
 def display_general_metric(p_df, last_available=False):
@@ -635,13 +713,48 @@ def display_general_metric(p_df, last_available=False):
         for i, col in enumerate(dict_data.keys()):
             cols[i].plotly_chart(chart_kpi_simple(cat=col, **dict_data[col], s=dim[i]), use_container_width=True)
 
+        with cols[0].expander("More about the indicator"):
+            txt_tx_pos = [
+                "Unit :",
+                "Percentage of positive cases",
+                "Description :",
+                "Daily percentage of positive testers compared to the number of testers (positive and negative)."
+                ]
+            caption(txt_tx_pos)
+
         with cols[1].expander("More about the indicator"):
-            st.caption("Unit :")
-            st.caption("Number of persons testing positive (RT-PCR and antigenic test) for the first time in more than 60 days divided by the population size")
-            st.caption("Description : ")
-            st.caption("The incidence rate is stopped at D-3 and calculated on the sum of the number of new positive persons for the last 7 days [D-9; D-3] in order to better take into account the delay of data reporting. It is expressed per 100,000 inhabitants.")
-            st.caption("Range : ")
-            st.caption("National level (France as a whole), at the regional level and at the departmental level (metropolitan and ultra-marine departments)")
+            txt_incid_rate = [
+                "Unit :",
+                "Number of cases per week per 100,000 population",
+                "Description : ",
+                "The incidence rate is stopped at D-3 and calculated on the sum of the number of new positive persons for the last 7 days [D-9; D-3] in order to better take into account the delay of data reporting. It is expressed per 100,000 inhabitants.",
+                "Range : ",
+                "National level (France as a whole), at the regional level and at the departmental level (metropolitan and ultra-marine departments)"
+                ]
+            caption(txt_incid_rate)
+
+        with cols[2].expander("More about the indicator"):
+            txt_TO = [
+                "Unit :",
+                "Percentage",
+                "Description :",
+                "Proportion of patients with COVID-19 currently in resuscitation, intensive care, or continuous monitoring units relative to total beds in initial capacity, i.e., before increasing resuscitation bed capacity in a hospital"
+                ]
+            caption(txt_TO)
+        with cols[3].expander("More about the indicator"):
+            txt_R = [
+                "Unit :",
+                "Average number of people an infected person can infect",
+                "Description : ",
+                "R effective > 1 :arrow_right: the epidemic is growing",
+                "R effective < 1 :arrow_right: the epidemic is decreasing",
+                "Type of update :",
+                "Once a week."
+                ]
+            caption(txt_R)
+def caption(txt_list):
+    for txt in txt_list:
+        st.caption(txt)
 
 
 def chart_kpi_simple(val, date, cat, s="", name=""):
