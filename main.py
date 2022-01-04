@@ -7,11 +7,10 @@ import streamlit as st
 import model
 import controller as ctrl
 import controller
-#import streamlit_analytics
+import streamlit_analytics
 
-#streamlit_analytics.track(unsafe_password="12388")
 
-#streamlit_analytics.start_tracking()
+streamlit_analytics.start_tracking()
 
 # Configuration --------------------------------------------------------------
 st.set_page_config(**model.page_config)
@@ -232,4 +231,4 @@ with container_main.container():
     #                In the graph above, it is the Incidence Rate for the first time in more than 60 days related to the population size. It is expressed per 100,000 population)
     #                """)
 
-#streamlit_analytics.stop_tracking(unsafe_password="123")
+streamlit_analytics.stop_tracking(unsafe_password=st.secrets["password"])
