@@ -26,10 +26,16 @@ import datetime
 from datetime import timedelta
 import re
 import numpy as np
+import ssl
 
+ssl._create_default_https_context = ssl._create_unverified_context
 # PRIVATE FUNCTION -----------------------------------------------------------
 def __parse_metrics_txt(y, t):
-    val = int(y-t)
+    try:
+        assert type(y) != np.float64 and type(t) != np.float64
+        val = int(y-t)
+    except:
+        val = "No Data Available.."
     return f"{val}"
 
 def __get_last_info(df):
@@ -50,7 +56,7 @@ def __display_row(ref, j1, last):
             label = item[1]['label'],
             value = '',
             delta = __parse_metrics_txt(j1[item[0]], last[item[0]]),
-            delta_color = item[1]['d']
+            delta_color = item[1]['d'] if type(j1[item[0]]) != np.float64 and type(last[item[0]]) != np.float64 else "off"
             )
 
 def parse_date(date, format_date):
